@@ -69,7 +69,7 @@ class CallWebhookJob implements ShouldQueue
                 'body' => json_encode($this->payload),
                 'verify' => $this->verifySsl,
                 'headers' => $this->headers,
-                'errors' => false,
+                'http_errors' => false,
             ]);
 
             if (!Str::startsWith($this->response->getStatusCode(), 2)) {
