@@ -13,6 +13,8 @@ use Spatie\WebhookServer\Events\FinalWebhookCallFailedEvent;
 use Spatie\WebhookServer\Events\WebhookCallFailedEvent;
 use Spatie\WebhookServer\Events\WebhookCallSucceededEvent;
 
+use Illuminate\Support\Facades\Log;
+
 class CallWebhookJob implements ShouldQueue
 {
     use InteractsWithQueue, Queueable, SerializesModels;
@@ -67,15 +69,28 @@ class CallWebhookJob implements ShouldQueue
                 'body' => json_encode($this->payload),
                 'verify' => $this->verifySsl,
                 'headers' => $this->headers,
+                'errors' => false,
             ]);
 
             if (!Str::startsWith($this->response->getStatusCode(), 2)) {
-                throw new Exception('Webhook call failed');
+                throw new Exception(sprintf(
+                    'Call to %s %s failed with status %d',
+                    $this->httpVerb,
+                    $this->webhookUrl,
+                    $this->response->getStatusCode()
+                ));
             }
 
             $this->dispatchEvent(WebhookCallSucceededEvent::class);
 
         } catch (Exception $exception) {
+            // JDJ: Log the exception, so we know what the problem is.
+
+            Log::error(sprintf(
+                'Webhook failure: %s',
+                $exception->getMessage()
+            ));
+
             /** @var \Spatie\WebhookServer\BackoffStrategy\BackoffStrategy $backoffStrategry */
             $backoffStrategy = app($this->backoffStrategyClass);
 
